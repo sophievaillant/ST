@@ -1,0 +1,103 @@
+---
+title: "Projet ST"
+output:
+  html_document:
+    df_print: paged
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*.
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+
+### **Packages**
+Seront utilises dans ce tp les packages "zoo", "tseries" et "fUnitRoots".
+
+```{r}
+library(zoo)
+library(tseries)
+#install.packages("fUnitRoots")
+library(fUnitRoots)
+```
+
+
+### Partie 1: les données
+
+Definition du repertoire de travail (wd)
+
+```{r}
+path="C:/Users/Sophie/Desktop/Projet ST"
+setwd(path)
+getwd()
+```
+Chargement des bases de donnees.
+
+On commence par lister les fichiers presents dans le wd - l'argument par defaut de list.files est le wd. Puis on charge dans un data.frame "data" le contenu du fichier "data_tp5.csv" 
+```{r}
+list.files()
+
+dta=read.csv("valeurs_mensuelles.csv", sep = ";")
+
+str(dta)
+```
+On met en forme la base de données
+```{r}
+colnames(dta)[1] <- "date"
+colnames(dta)[2] <- "IBPI"
+colnames(dta)[3] <- "classe"
+dta = dta[-(1:2),]
+dta <- dta[order(dta$date),]
+```
+Le format de date a l'air correctement reconnu.
+
+Nous allons maintenant mettre la serie au format zoo:
+```{r}
+dta$IBPI=zoo(dta$IBPI,order.by=dta$date)
+str(dta$IBPI)
+```
+#### Que représente la série choisie?
+
+Les indices de la production industrielle permettent de suivre l’évolution mensuelle de l’activité industrielle de la France et de la construction. Ils représentent à ce titre une information primordiale pour le suivi du cycle conjoncturel en France et pour l’identification de points de retournement du cycle économique à un stade précoce, parallèlement ou en association avec d’autres grands indicateurs macro-économiques comme l’emploi, les indices de prix, les indices de la production dans les services, ou encore le commerce extérieur.
+
+Ici, on s'intéresse à l'indice de la production industrielle de la transformation et la conservation de la viande de volaille. Les données sont mensuelles et s'étendent de janvier 1990 à février 2021, soient 374 observations.Les données sont issues d'une enquête mensuelle de branche par la Direction des statistiques d'entreprises (INSEE) et le Service de la Statistique et de la Prospective (ministère de l'agriculture) réalisée sur le territoire français. Son identifiant est 010537238.
+
+#### Representation Graphique avant transformation
+
+```{r}
+plot(dta$IBPI,type="b",pch=4)
+```
+La serie n'est visiblement pas stationnaire. Il y a une tendance qui évolue au cours du temps.
+
+#### Transformation de la serie
+Representons la serie differenciee des IBPI pour determiner graphiquement si elle parait plus stationnaire. Pour cela, nous allons cette fois appliquer la fonction *diff* :
+
+JUSTIFIER LA DIFFERENCIATION (JE L'AI FAIT CAR IL FAIT CA DANS LE TD5)
+
+
+```{r}
+a = as.numeric(dta$IBPI)
+dta$DIBPI=zoo(c(NA,diff(a,1)),order.by=dta$date)
+str(dta$DIBPI)
+```
+
+#### Representation graphique après transformation
+```{r}
+plot(dta$DIBPI[2:nrow(dta)],type="l",xlab="Dates",ylab="Diff IBPI",xaxt='n')
+```
+La serie differenciee d'ordre 1 semble evoluer autour d'une meme moyenne proche de 0; elle semble être stationnaire.
+
+### Modele ARMA
+
+#### Choix du modèle ARMA
+
+```{r}
+?adf.test
+?adfTest
+```
