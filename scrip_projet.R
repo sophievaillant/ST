@@ -53,7 +53,7 @@ summary(lm)
 r <- lm$residuals #on garde la serie corrigee de sa tendance
 plot(r)
 acf(r)
-# pas de signe visuel de saisonnalite
+# pas de signe visuel de saisonnalite ?
 
 X_notrend <- xm - lm$coefficients[1] - lm$coefficients[2]*obs 
 serie_notrend <- zoo(X_notrend, order.by=dta$date)
@@ -65,13 +65,14 @@ screen(2) ; plot(serie_notrend)
 screen(1) ; plot(dta$DIBPI[2:nrow(dta)],type="l",xlab="Dates",ylab="Diff IBPI",xaxt='n')
 #Enlever la tendance ne semble pas stationnariser la série autant que la différentiation le fait 
 
+
 ##Transformation logarithmique de la série et différenciation de la série en log ####
 #On regarde si le passage au log permet d'avoir des résultats plus stationnaires 
 a = as.numeric(log(dta$IBPI))
 dlogIBPI <- zoo(diff(a,1))
 split.screen(1:2)
-screen(1) ; plot(log(dta$IBPI))
-screen(2) ; plot(dlogIBPI)
+screen(1) ; plot(a) #pour grandeurs comparables
+screen(2) ; plot(dta$dlogIBPI)
 #Le passage au log semble utile ici; comparons le log et la différenciation
 
 split.screen(1:2)
@@ -98,53 +99,57 @@ Qtests <- function(series, k, fitdf=0) {
   return(t(pvals))
 }
 
+#on regarde pour la série lm (pas stationnarisée)
 Qtests(adf@test$lm$residuals[0:24], 24, fitdf = length(adf@test$lm$coefficients))
 # Toutes les p-value sont superieurs a 10%, on ne peut pas rejeter
 # l'hypothese nulle de non correlation des residus
 # Le test de Dickey Fuller avec lags = 0 est valide
 
-adf@test$p.value
+adf
 # On obtient une p-value de 0.01
 # On rejette l'hypothese nulle d'existence d'une racine unitaire au seuil de 99%
+# donc on rejette l'hypothèse selon laquelle la série ne serait pas stationnaire
 
-# On realise d'autres tests pour verifier la stationnarite de la serie
+######### revoir ##########
+class(dta$date)
+#testons donc la racine unitaire pour la série log différenciée
 
-# Test PP
-pp.test(dta$DIBPI)
-# On observe une p-value inferieur Ã  1%
-# On rejete Ã  nouveau l'hypothÃ¨se nulle d'existence d'une racine unitaire au seuil de 99%
-
-# Test KPSS
-kpss.test(dta$DIBPI,null = 'Level')
-# On obtient une p-value de plus de 10%, on ne peut rejeter l'hypothÃ¨se de stationnaritÃ©
-
-# Tout les tests semble indiquer que la serie diffÃ©renciÃ© Ã  l'ordre 1 est stationnaire
-
-
-#testons donc la racine unitaire pour la série différenciée
-summary(lm(dlocom ~ dates[-1]))
-#Ni la constante ni la tendance ne sont significatives. 
-#On est donc dans le cas du test ADF sans constante ni tendance.
-adf <- adfTest_valid(dlocom,24,"nc")
 Qtests(adf@test$lm$residuals, 24, fitdf = length(adf@test$lm$coefficients))
 adf
 #la racine unitaire est rejetée au seuil de 95%. La série différenciée est donc I(0).
 #locom est donc I(1).
 
-##b. Test Philippe-Peron ####
-pp.test(dlocom)
-#le test de Philippe Peron semble indiquer (lui aussi) que série différenciée est stationnaire
-#Autrement dit la série est intégrée d'ordre 1 ie I(1)
+
+# On realise d'autres tests pour verifier la stationnarite de la serie
+
+# Test Philippe - Peron (marche pas)
+pp.test(dta$dlogIBPI)
+# On observe une p-value inferieur Ã  1%
+# On rejete Ã  nouveau l'hypothÃ¨se nulle d'existence d'une racine unitaire au seuil de 99%
+
+# Test KPSS
+kpss.test(dta$dlogIBPI,null = 'Level')
+# On obtient une p-value de plus de 10% ("p-value greater than printed p-value"), 
+#on ne peut rejeter l'hypothèse de stationnarité
+
+# Tout les tests semblent indiquer que la serie différenciée à l'ordre 1 est stationnaire
+
 
 #3.Représentation de la série choisie avant et après transformation ####
 #La comparaison avant/après est la suivante : 
-plot(cbind(locom,dlocom), main="Représentation de la série choisie avant et après transformation")
 
+#je copie une comparaison qui est au-dessus
+a = as.numeric(log(dta$IBPI))
+dlogIBPI <- zoo(diff(a,1))
+split.screen(1:2)
+screen(1) ; plot(log(dta$IBPI)) #pour grandeurs comparables
+screen(2) ; plot(dta$dlogIBPI)
 
 ## PARTIE 2
 
-#on considere la serie en log differenciee en 1
-ggAcf(dta$DIBPI)
-#significatif pour 1,3,4,6,7,9,10,12,13 etc
-ggPacf(dta$DIBPI)
-#significatif pour 1,2,4,5,7,8,11,12 etc
+#1.Choix d'un modèle ARMA
+##a.Identification des paramètres ####
+#On regarde les ordres max des AR et MA
+
+ggAcf(dlogIBPI) #q* = 25 wesh
+ggPacf(dlogIBPI) #p* = aussi 25
